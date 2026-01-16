@@ -400,7 +400,7 @@
     .footer .admin-link { display: block; margin-top: 1rem; font-size: 0.75rem; opacity: 0.2; }
     .footer .admin-link:hover { opacity: 1; }
     
-    @media (min-width: 1024px) { .sticky-card { position: sticky; top: 2rem; } }
+    .sticky-card { position: sticky; top: 2rem; }
     
     input[type="date"]::-webkit-calendar-picker-indicator {
       background-color: var(--primary);
@@ -1324,7 +1324,23 @@
   }
   
   // ==================== EMAILJS INIT ====================
-  emailjs.init('uBxESnC6CTyqiNyS6');
+  let emailJsReady = false;
+  if (window.emailjs && typeof emailjs.init === 'function') {
+    try {
+      emailjs.init('uBxESnC6CTyqiNyS6');
+      emailJsReady = true;
+    } catch (error) {
+      console.error('EmailJS init error:', error);
+    }
+  } else {
+    console.warn('EmailJS not available. Emails will be skipped.');
+  }
+
+  function createIconsSafe() {
+    if (window.lucide && typeof lucide.createIcons === 'function') {
+      lucide.createIcons();
+    }
+  }
   
   // ==================== RESERVATION FUNCTIONS ====================
   function scrollToReservation() {
@@ -1332,20 +1348,28 @@
   }
   
   function updateHoursForDate() {
-    const dateDebut = document.getElementById('dateDebut').value;
-    if (!dateDebut) return;
-    
-    const date = new Date(dateDebut);
-    const dayOfWeek = date.getDay(); // 0=dimanche, 1=lundi, 2=mardi, 3=mercredi, 4=jeudi, 5=vendredi, 6=samedi
-    
+    const dateDebutInput = document.getElementById('dateDebut');
+    const dateFinInput = document.getElementById('dateFin');
     const heureDebutSelect = document.getElementById('heureDebut');
     const heureFinSelect = document.getElementById('heureFin');
-    
-    let startHour, endHour;
-    
+    const dateDebutValue = dateDebutInput.value;
+    if (!dateDebutValue) return;
+
+    const date = new Date(dateDebutValue);
+    const dayOfWeek = date.getDay(); // 0=dimanche, 1=lundi, 2=mardi, 3=mercredi, 4=jeudi, 5=vendredi, 6=samedi
+
+    let startHour;
+    let endHour;
+
     if (dayOfWeek === 0 || dayOfWeek === 1) {
       // Dimanche ou Lundi - fermé
-      alert('Attention : Le salon est fermé le dimanche et le lundi. Veuillez choisir un autre jour.');
+      alert('Attention : Le salon est fermé le dimanche et le lundi. Nous avons ajusté la date au prochain jour ouvré.');
+      const nextOpenDate = new Date(date);
+      while (nextOpenDate.getDay() === 0 || nextOpenDate.getDay() === 1) {
+        nextOpenDate.setDate(nextOpenDate.getDate() + 1);
+      }
+      dateDebutInput.value = nextOpenDate.toISOString().split('T')[0];
+      updateHoursForDate();
       return;
     } else if (dayOfWeek === 3) {
       // Mercredi : 12h - 17h30
@@ -1376,6 +1400,12 @@
       optionsFin += `<option value="${value}">${value}</option>`;
     }
     heureFinSelect.innerHTML = optionsFin;
+
+    const minDate = dateDebutInput.value;
+    dateFinInput.min = minDate;
+    if (dateFinInput.value && dateFinInput.value < minDate) {
+      dateFinInput.value = minDate;
+    }
   }
   
   function updateDuree() {
@@ -1536,7 +1566,7 @@
       document.getElementById('adminLogin').style.display = 'none';
       document.getElementById('adminDashboard').style.display = 'block';
       renderReservations();
-      lucide.createIcons();
+      createIconsSafe();
     } else {
       showToast('Erreur', 'Code d\'accès incorrect', true);
     }
@@ -1552,7 +1582,7 @@
       input.type = 'password';
       icon.setAttribute('data-lucide', 'eye');
     }
-    lucide.createIcons();
+    createIconsSafe();
   }
   
   function logoutAdmin() {
@@ -1605,7 +1635,7 @@
           <p>Aucune réservation trouvée</p>
         </div>
       `;
-      lucide.createIcons();
+      createIconsSafe();
       return;
     }
     
@@ -1677,7 +1707,7 @@
       `;
     }).join('');
     
-    lucide.createIcons();
+    createIconsSafe();
   }
   
   function updateStatus(id, newStatus) {
@@ -1813,7 +1843,10 @@ PHENO&CO - Barbershop Montpellier`;
     }, 500);
     
     let emailError = false;
-    try {
+    if (!emailJsReady) {
+      emailError = true;
+    } else {
+      try {
       // Récapitulatif complet pour les emails
       const recapText = `
 RÉCAPITULATIF DE LA DEMANDE DE RÉSERVATION
@@ -1885,13 +1918,14 @@ PHENO&CO - Barbershop & Coworking - Montpellier
       });
       console.log('Email 2 (client) sent:', email2);
       
-    } catch (error) {
-      console.error('Email error object:', error);
-      console.error('Email error text:', error?.text);
-      console.error('Email error message:', error?.message);
-      console.error('Email error status:', error?.status);
-      console.error('Email error full:', JSON.stringify(error, Object.getOwnPropertyNames(error)));
-      emailError = true;
+      } catch (error) {
+        console.error('Email error object:', error);
+        console.error('Email error text:', error?.text);
+        console.error('Email error message:', error?.message);
+        console.error('Email error status:', error?.status);
+        console.error('Email error full:', JSON.stringify(error, Object.getOwnPropertyNames(error)));
+        emailError = true;
+      }
     }
     
     submitBtn.innerHTML = '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg> Demande Envoyée !';
@@ -1907,7 +1941,7 @@ PHENO&CO - Barbershop & Coworking - Montpellier
       successMessage.classList.remove('show');
       submitBtn.disabled = false;
       submitBtn.innerHTML = 'Envoyer ma demande <i data-lucide="arrow-right"></i>';
-      lucide.createIcons();
+      createIconsSafe();
       document.getElementById('reservationForm').reset();
       
       document.getElementById('card-courte').classList.add('selected');
@@ -1920,9 +1954,22 @@ PHENO&CO - Barbershop & Coworking - Montpellier
       
       const tomorrow = new Date();
       tomorrow.setDate(tomorrow.getDate() + 1);
-      document.getElementById('dateDebut').value = tomorrow.toISOString().split('T')[0];
-      document.getElementById('heureDebut').value = '10:00';
-      document.getElementById('heureFin').value = '11:00';
+      const dateDebutInput = document.getElementById('dateDebut');
+      const dateFinInput = document.getElementById('dateFin');
+      const heureDebutSelect = document.getElementById('heureDebut');
+      const heureFinSelect = document.getElementById('heureFin');
+      const tomorrowValue = tomorrow.toISOString().split('T')[0];
+      dateDebutInput.min = tomorrowValue;
+      dateFinInput.min = tomorrowValue;
+      dateDebutInput.value = tomorrowValue;
+
+      updateHoursForDate();
+      if (heureDebutSelect.options.length > 0) {
+        heureDebutSelect.value = heureDebutSelect.options[0].value;
+      }
+      if (heureFinSelect.options.length > 0) {
+        heureFinSelect.value = heureFinSelect.options[0].value;
+      }
       
       calculatePrice();
       window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -1931,14 +1978,29 @@ PHENO&CO - Barbershop & Coworking - Montpellier
   
   // ==================== INITIALIZATION ====================
   document.addEventListener('DOMContentLoaded', function() {
-    lucide.createIcons();
-    
+    createIconsSafe();
+
     const tomorrow = new Date();
     tomorrow.setDate(tomorrow.getDate() + 1);
-    document.getElementById('dateDebut').value = tomorrow.toISOString().split('T')[0];
-    document.getElementById('heureDebut').value = '10:00';
-    document.getElementById('heureFin').value = '11:00';
-    
+
+    const dateDebutInput = document.getElementById('dateDebut');
+    const dateFinInput = document.getElementById('dateFin');
+    const heureDebutSelect = document.getElementById('heureDebut');
+    const heureFinSelect = document.getElementById('heureFin');
+
+    const tomorrowValue = tomorrow.toISOString().split('T')[0];
+    dateDebutInput.min = tomorrowValue;
+    dateFinInput.min = tomorrowValue;
+    dateDebutInput.value = tomorrowValue;
+
+    updateHoursForDate();
+    if (heureDebutSelect.options.length > 0) {
+      heureDebutSelect.value = heureDebutSelect.options[0].value;
+    }
+    if (heureFinSelect.options.length > 0) {
+      heureFinSelect.value = heureFinSelect.options[0].value;
+    }
+
     calculatePrice();
   });
 </script>
