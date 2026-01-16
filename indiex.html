@@ -35,6 +35,10 @@
     
     * { margin: 0; padding: 0; box-sizing: border-box; }
     
+    html {
+      scroll-behavior: smooth;
+    }
+    
     body {
       font-family: 'DM Sans', sans-serif;
       background-color: var(--background);
@@ -146,8 +150,19 @@
     .section-header h2 { font-size: 1.875rem; font-weight: 700; color: var(--primary); margin-bottom: 1rem; }
     .section-header p { color: var(--muted); max-width: 42rem; margin: 0 auto; }
     
-    .form-grid { display: grid; grid-template-columns: 1fr; gap: 2rem; align-items: start; }
-    @media (min-width: 1024px) { .form-grid { grid-template-columns: 7fr 5fr; } }
+    /* Nouvelle structure de grille avec align-items: start pour que sticky fonctionne */
+    .form-grid { 
+      display: grid; 
+      grid-template-columns: 1fr; 
+      gap: 2rem; 
+      align-items: start; 
+    }
+    
+    @media (min-width: 1024px) { 
+      .form-grid { 
+        grid-template-columns: 1fr 380px; 
+      } 
+    }
     
     .card {
       background-color: var(--card);
@@ -194,7 +209,7 @@
       color: var(--foreground);
       font-size: 1rem;
       font-family: inherit;
-      transition: all 0.2s;
+      transition: border-color 0.2s;
     }
     
     .form-input:focus, .form-select:focus, .form-textarea:focus {
@@ -380,7 +395,7 @@
     .success-message .warning { font-size: 0.75rem; color: #eab308; margin-top: 0.5rem; display: flex; align-items: center; gap: 0.5rem; }
     .success-message .warning svg { width: 0.75rem; height: 0.75rem; }
     
-    .about-section { margin-top: 3rem; }
+    .about-section { margin-top: 0; }
     .about-section .card-header span { font-size: 1.5rem; }
     .about-section p { color: var(--muted); margin-bottom: 1rem; line-height: 1.7; }
     .about-section p:first-of-type { font-weight: 500; color: var(--foreground); }
@@ -400,16 +415,30 @@
     .footer .admin-link { display: block; margin-top: 1rem; font-size: 0.75rem; opacity: 0.2; }
     .footer .admin-link:hover { opacity: 1; }
     
-    .sticky-card { position: static; }
-    @media (min-width: 1024px) {
-      .sticky-card {
-        position: fixed;
-        top: 2rem;
-        right: max(1rem, calc((100vw - 72rem) / 2));
-        width: min(30rem, calc(100vw - 2rem));
+    /* Correction complète du sticky - suppression des règles contradictoires */
+    /* Colonne de droite qui contient le récap et about */
+    .sidebar-column {
+      display: flex;
+      flex-direction: column;
+      gap: 2rem;
+    }
+    
+    /* Le bloc sticky qui reste fixe */
+    .sticky-wrapper {
+      position: static;
+    }
+    
+      /* Cache la scrollbar mais permet le scroll si nécessaire */
+      .sticky-wrapper::-webkit-scrollbar {
+        width: 0;
+        background: transparent;
       }
     }
-    .sticky-card { position: sticky; top: 2rem; }
+    
+    /* La carte récap n'a plus besoin de margin-bottom car le wrapper gère l'espacement */
+    .sticky-wrapper .card {
+      margin-bottom: 0;
+    }
     
     input[type="date"]::-webkit-calendar-picker-indicator {
       background-color: var(--primary);
@@ -606,6 +635,16 @@
     .cgv-card th, .cgv-card td { padding: 0.75rem 1rem; text-align: left; border: 1px solid var(--border); }
     .cgv-card th { background-color: rgba(249, 200, 0, 0.1); color: var(--primary); font-weight: 600; }
     .cgv-card td { color: var(--muted); }
+    
+    /* Animation de spinner pour le bouton submit */
+    @keyframes spin {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+    
+    .animate-spin {
+      animation: spin 1s linear infinite;
+    }
   </style>
 </head>
 <body>
@@ -651,6 +690,7 @@
       
       <form id="reservationForm" class="form-grid">
         
+        <!-- Colonne gauche - Formulaire -->
         <div>
           <div class="card">
             
@@ -902,75 +942,82 @@
           </div>
         </div>
         
-        <div>
-          <div class="card sticky-card">
-            
-            <div class="card-header">
-              <i data-lucide="calculator"></i>
-              <h3>Récapitulatif</h3>
-            </div>
-            
-            <div class="summary-row">
-              <span class="label">Formule</span>
-              <span class="value" id="summaryFormule">À l'heure</span>
-            </div>
-            
-            <div class="summary-row">
-              <span class="label">Date(s)</span>
-              <span class="value" id="summaryDates">-</span>
-            </div>
-            
-            <div class="summary-row">
-              <span class="label">Horaires</span>
-              <span class="value" id="summaryHoraires">10:00 - 11:00</span>
-            </div>
-            
-            <div class="summary-row">
-              <span class="label">Pack matériel</span>
-              <span class="value" id="summaryPack">Aucun</span>
-            </div>
-            
-            <div class="summary-divider"></div>
-            
-            <div class="summary-row">
-              <span class="label">Total HT</span>
-              <span class="value" id="summaryHT">10,00 €</span>
-            </div>
-            
-            <div class="summary-row">
-              <span class="label">TVA (20%)</span>
-              <span class="value" id="summaryTVA">2,00 €</span>
-            </div>
-            
-            <div class="summary-total">
-              <span>Total TTC</span>
-              <span id="summaryTTC">12,00 €</span>
-            </div>
-            
-            <div class="summary-deposit">
-              <div class="row">
-                <span>Acompte à verser</span>
-                <span class="deposit" id="summaryDeposit">6,00 €</span>
+        <!-- Nouvelle structure pour le sidebar avec sticky correct -->
+        <!-- Colonne droite - Récapitulatif sticky + About -->
+        <div class="sidebar-column">
+          
+          <!-- Wrapper sticky pour le récapitulatif -->
+          <div class="sticky-wrapper">
+            <div class="card">
+              
+              <div class="card-header">
+                <i data-lucide="calculator"></i>
+                <h3>Récapitulatif</h3>
               </div>
-              <div class="remaining" id="summaryRemaining">Reste à payer sur place : 6,00 €</div>
+              
+              <div class="summary-row">
+                <span class="label">Formule</span>
+                <span class="value" id="summaryFormule">À l'heure</span>
+              </div>
+              
+              <div class="summary-row">
+                <span class="label">Date(s)</span>
+                <span class="value" id="summaryDates">-</span>
+              </div>
+              
+              <div class="summary-row">
+                <span class="label">Horaires</span>
+                <span class="value" id="summaryHoraires">10:00 - 11:00</span>
+              </div>
+              
+              <div class="summary-row">
+                <span class="label">Pack matériel</span>
+                <span class="value" id="summaryPack">Aucun</span>
+              </div>
+              
+              <div class="summary-divider"></div>
+              
+              <div class="summary-row">
+                <span class="label">Total HT</span>
+                <span class="value" id="summaryHT">10,00 €</span>
+              </div>
+              
+              <div class="summary-row">
+                <span class="label">TVA (20%)</span>
+                <span class="value" id="summaryTVA">2,00 €</span>
+              </div>
+              
+              <div class="summary-total">
+                <span>Total TTC</span>
+                <span id="summaryTTC">12,00 €</span>
+              </div>
+              
+              <div class="summary-deposit">
+                <div class="row">
+                  <span>Acompte à verser</span>
+                  <span class="deposit" id="summaryDeposit">6,00 €</span>
+                </div>
+                <div class="remaining" id="summaryRemaining">Reste à payer sur place : 6,00 €</div>
+              </div>
+              
+              <button type="submit" class="submit-btn" id="submitBtn">
+                Envoyer ma demande
+                <i data-lucide="arrow-right"></i>
+              </button>
+              
+              <div id="successMessage" class="success-message">
+                <h4><i data-lucide="check-circle"></i> Demande envoyée !</h4>
+                <p>Nous avons bien reçu votre demande de réservation. Vous recevrez un email de confirmation avec les instructions de paiement.</p>
+                <p class="warning" id="emailWarning" style="display: none;">
+                  <i data-lucide="alert-triangle"></i>
+                  L'envoi d'email a échoué. Veuillez nous contacter par WhatsApp.
+                </p>
+              </div>
+              
             </div>
-            
-            <button type="submit" class="submit-btn" id="submitBtn">
-              Envoyer ma demande
-              <i data-lucide="arrow-right"></i>
-            </button>
-            
-            <div id="successMessage" class="success-message">
-              <h4><i data-lucide="check-circle"></i> Demande envoyée !</h4>
-              <p>Nous avons bien reçu votre demande de réservation. Vous recevrez un email de confirmation avec les instructions de paiement.</p>
-              <p class="warning" id="emailWarning" style="display: none;">
-                <i data-lucide="alert-triangle"></i>
-                L'envoi d'email a échoué. Veuillez nous contacter par WhatsApp.
-              </p>
-            </div>
-            
           </div>
           
+          <!-- Section À propos (ne fait pas partie du sticky) -->
           <div class="card about-section">
             <div class="card-header">
               <span>✨</span>
@@ -1023,15 +1070,13 @@
       <button onclick="checkAdminCode()" class="btn btn-primary" style="margin-top: 1rem;">
         <i data-lucide="log-in"></i> Connexion
       </button>
-      <p style="margin-top: 1.5rem;"><a href="#" onclick="showPage('reservation'); return false;" style="color: var(--muted); font-size: 0.875rem;">← Retour au formulaire</a></p>
     </div>
     
     <div id="adminDashboard" style="display: none;">
       
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; padding: 0.75rem 1rem; background: rgba(255,255,255,0.05); border-radius: 0.5rem;">
-        <a href="#" onclick="showPage('reservation'); return false;" style="color: var(--muted); font-size: 0.875rem; text-decoration: none;">← Retour au formulaire</a>
-        <a href="#" onclick="logoutAdmin(); return false;" style="color: var(--muted); font-size: 0.875rem; text-decoration: none;">Déconnexion →</a>
-      </div>
+      <a href="#" onclick="showPage('reservation'); return false;" class="back-link">
+        <i data-lucide="arrow-left"></i> Retour au site
+      </a>
       
       <div class="stats-grid">
         <div class="stat-card">
@@ -1069,25 +1114,24 @@
           <option value="mensuel">Mensuel</option>
         </select>
         
-        <button onclick="exportReservations()" class="btn btn-outline" style="flex: 0;">
-          <i data-lucide="download"></i> Exporter
+        <button onclick="exportReservations()" class="btn btn-outline">
+          <i data-lucide="download"></i> Exporter CSV
+        </button>
+        
+        <button onclick="logoutAdmin()" class="btn btn-outline">
+          <i data-lucide="log-out"></i> Déconnexion
         </button>
       </div>
       
-      <div id="reservationsList" class="reservations-list">
-        <div class="empty-state">
-          <i data-lucide="inbox"></i>
-          <p>Aucune réservation pour le moment</p>
-        </div>
-      </div>
+      <div id="reservationsList" class="reservations-list"></div>
       
     </div>
     
   </div>
   
   <footer class="footer">
-    <p>PHENO&CO — Back-Office</p>
-    <a href="#" onclick="showPage('reservation'); return false;">← Retour au formulaire</a>
+    <p>PHENO&CO — Barbershop & Coworking • Montpellier</p>
+    <a href="#" onclick="showPage('reservation'); return false;">← Retour au formulaire de réservation</a>
   </footer>
   
 </div>
@@ -1096,206 +1140,161 @@
 <div id="page-cgv" class="page-section">
   
   <header class="admin-header">
-    <a href="#" onclick="showPage('reservation'); return false;" class="back-link">← Retour au formulaire</a>
-    <h1 class="font-serif">CGV & Contrat de Location</h1>
-    <p>Conditions générales de location de fauteuil PHENO&CO</p>
+    <h1 class="font-serif">Conditions Générales de Vente</h1>
+    <p>PHENO&CO — Location de fauteuil de coiffure</p>
   </header>
   
   <div class="cgv-container">
     
+    <a href="#" onclick="showPage('reservation'); return false;" class="back-link">
+      <i data-lucide="arrow-left"></i> Retour au formulaire
+    </a>
+    
     <div class="cgv-card">
-      <h2>Article 1 — Objet du Contrat</h2>
-      <p>Le présent contrat a pour objet de définir les conditions de mise à disposition d'un poste de travail (fauteuil) au sein du salon de coiffure <strong>PHENO&CO</strong>, situé à Montpellier.</p>
-      <p>Le locataire, professionnel de la coiffure indépendant, loue un espace équipé pour exercer son activité auprès de sa propre clientèle, dans le respect du règlement intérieur du salon.</p>
+      <h2>1. Objet du contrat</h2>
+      <p>Les présentes conditions générales régissent la location de fauteuil de coiffure au sein de l'établissement <strong>PHENO&CO</strong>, situé à Montpellier.</p>
+      <p>Cette location permet aux coiffeurs et barbiers indépendants d'exercer leur activité professionnelle dans un espace équipé et partagé.</p>
     </div>
     
     <div class="cgv-card">
-      <h2>Article 2 — Conditions d'Éligibilité</h2>
+      <h2>2. Conditions d'éligibilité</h2>
       <p>Pour louer un fauteuil chez PHENO&CO, le locataire doit :</p>
       <ul>
-        <li>Justifier d'au moins <strong>3 ans d'expérience professionnelle</strong> en coiffure/barbier</li>
-        <li>Être titulaire d'un <strong>CAP/BP Coiffure</strong> ou diplôme équivalent reconnu</li>
-        <li>Être immatriculé en tant qu'<strong>auto-entrepreneur, société, ou en cours d'immatriculation</strong></li>
-        <li>Disposer d'une <strong>assurance responsabilité civile professionnelle</strong> valide</li>
-        <li>Fournir les justificatifs correspondants avant la première location</li>
+        <li>Être titulaire d'un <strong>CAP/BP Coiffure</strong> ou équivalent</li>
+        <li>Justifier d'au moins <strong>3 ans d'expérience professionnelle</strong></li>
+        <li>Posséder un <strong>statut professionnel</strong> (auto-entrepreneur, société, ou en cours d'immatriculation)</li>
+        <li>Disposer d'une <strong>assurance responsabilité civile professionnelle</strong> en cours de validité</li>
       </ul>
+      
       <div class="highlight">
-        <p><strong>Important :</strong> Toute fausse déclaration entraînera l'annulation immédiate de la réservation sans remboursement.</p>
+        <p><strong>Important :</strong> Les justificatifs (diplôme, SIRET, attestation d'assurance) devront être fournis avant le premier jour de location.</p>
       </div>
     </div>
     
     <div class="cgv-card">
-      <h2>Article 3 — Tarification</h2>
+      <h2>3. Tarifs et formules</h2>
       
-      <h3>3.1 Location Courte Durée</h3>
+      <h3>Formules courte durée</h3>
       <table>
-        <thead>
-          <tr>
-            <th>Formule</th>
-            <th>Tarif HT</th>
-            <th>Acompte</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td>À l'heure</td>
-            <td>10 € HT</td>
-            <td>50%</td>
-          </tr>
-          <tr>
-            <td>Demi-journée (4h)</td>
-            <td>35 € HT</td>
-            <td>50%</td>
-          </tr>
-          <tr>
-            <td>Journée complète</td>
-            <td>65 € HT</td>
-            <td>50%</td>
-          </tr>
-        </tbody>
+        <tr>
+          <th>Formule</th>
+          <th>Tarif HT</th>
+          <th>Acompte</th>
+        </tr>
+        <tr>
+          <td>À l'heure</td>
+          <td>10 €/h</td>
+          <td>50%</td>
+        </tr>
+        <tr>
+          <td>Demi-journée (4h)</td>
+          <td>35 €</td>
+          <td>50%</td>
+        </tr>
+        <tr>
+          <td>Journée</td>
+          <td>65 €</td>
+          <td>50%</td>
+        </tr>
       </table>
       
-      <h3>3.2 Location Longue Durée</h3>
+      <h3>Formules longue durée</h3>
       <table>
-        <thead>
-          <tr>
-            <th>Formule</th>
-            <th>Tarif HT</th>
-            <th>Acompte</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td>Semaine (5 jours)</td>
-            <td>60 € HT / jour (300 € HT/semaine)</td>
-            <td>25%</td>
-          </tr>
-          <tr>
-            <td>Mensuel</td>
-            <td>55 € HT / jour</td>
-            <td>25%</td>
-          </tr>
-        </tbody>
+        <tr>
+          <th>Formule</th>
+          <th>Tarif HT</th>
+          <th>Acompte</th>
+        </tr>
+        <tr>
+          <td>Semaine</td>
+          <td>60 €/jour</td>
+          <td>25%</td>
+        </tr>
+        <tr>
+          <td>Mensuel</td>
+          <td>55 €/jour</td>
+          <td>25%</td>
+        </tr>
       </table>
       
-      <h3>3.3 Packs Matériel (optionnels)</h3>
+      <h3>Packs matériel (optionnel)</h3>
       <table>
-        <thead>
-          <tr>
-            <th>Pack</th>
-            <th>Contenu</th>
-            <th>Tarif HT/jour</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td>Essentiel</td>
-            <td>Tondeuses, outils de finition, cape, serviettes</td>
-            <td>20 € HT</td>
-          </tr>
-          <tr>
-            <td>Premium</td>
-            <td>Essentiel + rasoir + serviettes supplémentaires</td>
-            <td>30 € HT</td>
-          </tr>
-        </tbody>
+        <tr>
+          <th>Pack</th>
+          <th>Contenu</th>
+          <th>Tarif HT</th>
+        </tr>
+        <tr>
+          <td>Essentiel</td>
+          <td>Tondeuses, outils de finition, cape, serviettes</td>
+          <td>20 €/jour</td>
+        </tr>
+        <tr>
+          <td>Premium</td>
+          <td>Essentiel + rasoir + serviettes supplémentaires</td>
+          <td>30 €/jour</td>
+        </tr>
       </table>
-      
-      <p style="margin-top: 1rem;"><strong>TVA :</strong> 20% appliquée à tous les tarifs.</p>
     </div>
     
     <div class="cgv-card">
-      <h2>Article 4 — Réservation et Paiement</h2>
-      
-      <h3>4.1 Processus de réservation</h3>
-      <ol>
-        <li>Remplir le formulaire de demande en ligne</li>
-        <li>Réception d'un email de confirmation avec récapitulatif</li>
-        <li>Envoi des justificatifs requis par email</li>
-        <li>Réception du lien de paiement pour l'acompte (SumUp)</li>
-        <li>Confirmation définitive après réception du paiement</li>
-      </ol>
-      
-      <h3>4.2 Modalités de paiement</h3>
+      <h2>4. Modalités de paiement</h2>
+      <p>Un <strong>acompte</strong> est demandé à la réservation :</p>
       <ul>
-        <li><strong>Acompte :</strong> À régler lors de la confirmation (50% courte durée, 25% longue durée)</li>
-        <li><strong>Solde :</strong> À régler sur place, le jour de la prestation</li>
-        <li><strong>Moyens acceptés :</strong> Carte bancaire, espèces, virement</li>
+        <li><strong>50%</strong> pour les formules courte durée</li>
+        <li><strong>25%</strong> pour les formules longue durée</li>
+      </ul>
+      <p>Le solde est payable <strong>sur place</strong> le premier jour de location.</p>
+      <p>Moyens de paiement acceptés : espèces, carte bancaire, virement.</p>
+    </div>
+    
+    <div class="cgv-card">
+      <h2>5. Annulation et modification</h2>
+      <p><strong>Annulation par le locataire :</strong></p>
+      <ul>
+        <li>Plus de 48h avant : remboursement intégral de l'acompte</li>
+        <li>Moins de 48h avant : acompte conservé</li>
+        <li>Non-présentation : facturation intégrale</li>
+      </ul>
+      <p><strong>Modification :</strong> Toute demande de modification doit être effectuée au moins 24h à l'avance et reste soumise à disponibilité.</p>
+    </div>
+    
+    <div class="cgv-card">
+      <h2>6. Horaires d'ouverture</h2>
+      <ul>
+        <li><strong>Mardi, Jeudi, Vendredi, Samedi :</strong> 10h - 18h</li>
+        <li><strong>Mercredi :</strong> 12h - 17h30</li>
+        <li><strong>Dimanche et Lundi :</strong> Fermé</li>
       </ul>
     </div>
     
     <div class="cgv-card">
-      <h2>Article 5 — Annulation et Remboursement</h2>
-      <ul>
-        <li><strong>Plus de 48h avant :</strong> Remboursement intégral de l'acompte</li>
-        <li><strong>Entre 24h et 48h :</strong> Remboursement de 50% de l'acompte</li>
-        <li><strong>Moins de 24h :</strong> Acompte non remboursable</li>
-        <li><strong>Non-présentation :</strong> Acompte acquis, facturation possible du solde</li>
-      </ul>
-      <p>En cas de force majeure dûment justifiée, un report pourra être proposé.</p>
-    </div>
-    
-    <div class="cgv-card">
-      <h2>Article 6 — Obligations du Locataire</h2>
+      <h2>7. Règlement intérieur</h2>
       <p>Le locataire s'engage à :</p>
       <ul>
         <li>Respecter les horaires convenus</li>
         <li>Maintenir le poste de travail propre et rangé</li>
-        <li>Utiliser le matériel mis à disposition avec soin</li>
-        <li>Respecter la clientèle et le personnel du salon</li>
-        <li>Ne pas sous-louer le fauteuil à un tiers</li>
-        <li>Signaler tout dysfonctionnement ou dégradation</li>
-        <li>Respecter le règlement intérieur du salon</li>
+        <li>Utiliser uniquement le matériel mis à disposition ou son propre matériel</li>
+        <li>Adopter une attitude professionnelle et respectueuse</li>
+        <li>Respecter les règles d'hygiène en vigueur</li>
       </ul>
     </div>
     
     <div class="cgv-card">
-      <h2>Article 7 — Responsabilités</h2>
-      <p><strong>PHENO&CO</strong> met à disposition un espace de travail équipé et fonctionnel. Le locataire reste seul responsable :</p>
+      <h2>8. Responsabilités</h2>
+      <p>PHENO&CO ne pourra être tenu responsable :</p>
       <ul>
-        <li>De ses prestations auprès de sa clientèle</li>
-        <li>De ses obligations fiscales et sociales</li>
-        <li>Des dommages causés par lui-même ou sa clientèle</li>
-        <li>De son matériel personnel</li>
+        <li>Des dommages causés par le locataire à ses clients</li>
+        <li>Du vol ou de la perte d'effets personnels</li>
+        <li>Des litiges entre le locataire et ses clients</li>
       </ul>
-      <p>PHENO&CO décline toute responsabilité en cas de vol, perte ou dégradation des effets personnels.</p>
+      <p>Le locataire est entièrement responsable de son activité et de sa clientèle.</p>
     </div>
     
     <div class="cgv-card">
-      <h2>Article 8 — Horaires du Salon</h2>
-      <table>
-        <tbody>
-          <tr>
-            <td><strong>Mardi, Jeudi, Vendredi, Samedi</strong></td>
-            <td>10h00 - 18h00</td>
-          </tr>
-          <tr>
-            <td><strong>Mercredi</strong></td>
-            <td>12h00 - 17h30</td>
-          </tr>
-          <tr>
-            <td><strong>Dimanche et Lundi</strong></td>
-            <td>Fermé</td>
-          </tr>
-        </tbody>
-      </table>
-      <p style="margin-top: 1rem;">Les réservations doivent respecter ces plages horaires. Toute extension doit faire l'objet d'un accord préalable.</p>
-    </div>
-    
-    <div class="cgv-card">
-      <h2>Article 9 — Résiliation</h2>
-      <p>En cas de non-respect des présentes CGV ou du règlement intérieur, PHENO&CO se réserve le droit de mettre fin à la location sans préavis ni indemnité. Les sommes déjà versées resteront acquises.</p>
-    </div>
-    
-    <div class="cgv-card">
-      <h2>Article 10 — Données Personnelles</h2>
-      <p>Les données collectées lors de la réservation sont utilisées exclusivement pour la gestion de la location et la communication avec le locataire. Elles ne sont pas transmises à des tiers.</p>
-      <p>Conformément au RGPD, le locataire dispose d'un droit d'accès, de rectification et de suppression de ses données. Contact : <strong>location.phenoandco@gmail.com</strong></p>
-    </div>
-    
-    <div class="cgv-card">
-      <h2>Article 11 — Droit Applicable</h2>
-      <p>Le présent contrat est soumis au droit français. En cas de litige, les parties s'engagent à rechercher une solution amiable. À défaut, les tribunaux de Montpellier seront seuls compétents.</p>
+      <h2>9. Données personnelles</h2>
+      <p>Les données collectées lors de la réservation sont utilisées uniquement pour la gestion des locations et ne sont pas transmises à des tiers.</p>
+      <p>Conformément au RGPD, vous disposez d'un droit d'accès, de modification et de suppression de vos données.</p>
     </div>
     
     <div class="cgv-card" style="text-align: center;">
@@ -1365,13 +1364,12 @@
     if (!dateDebutValue) return;
 
     const date = new Date(dateDebutValue);
-    const dayOfWeek = date.getDay(); // 0=dimanche, 1=lundi, 2=mardi, 3=mercredi, 4=jeudi, 5=vendredi, 6=samedi
+    const dayOfWeek = date.getDay();
 
     let startHour;
     let endHour;
 
     if (dayOfWeek === 0 || dayOfWeek === 1) {
-      // Dimanche ou Lundi - fermé
       alert('Attention : Le salon est fermé le dimanche et le lundi. Nous avons ajusté la date au prochain jour ouvré.');
       const nextOpenDate = new Date(date);
       while (nextOpenDate.getDay() === 0 || nextOpenDate.getDay() === 1) {
@@ -1381,16 +1379,13 @@
       updateHoursForDate();
       return;
     } else if (dayOfWeek === 3) {
-      // Mercredi : 12h - 17h30
       startHour = 12;
       endHour = 17.5;
     } else {
-      // Mardi, Jeudi, Vendredi, Samedi : 10h - 18h
       startHour = 10;
       endHour = 18;
     }
     
-    // Générer les options pour heure de début
     let optionsDebut = '';
     for (let h = startHour; h < endHour; h += 0.5) {
       const hours = Math.floor(h);
@@ -1400,7 +1395,6 @@
     }
     heureDebutSelect.innerHTML = optionsDebut;
     
-    // Générer les options pour heure de fin
     let optionsFin = '';
     for (let h = startHour + 1; h <= endHour; h += 0.5) {
       const hours = Math.floor(h);
@@ -1802,7 +1796,7 @@
     reservations.push(reservation);
     localStorage.setItem('phenoReservations', JSON.stringify(reservations));
     
-    // WhatsApp notification au SALON (PHENO&CO) - DOIT être avant les emails pour éviter blocage popup
+    // WhatsApp notification
     const messageManager = `🔔 NOUVELLE RÉSERVATION PHENO&CO
 
 👤 Client: ${nom}
@@ -1811,208 +1805,72 @@
 
 📅 Dates: ${reservation.dateDebut}${reservation.dateFin ? ' → ' + reservation.dateFin : ''}
 ⏰ Horaires: ${reservation.heureDebut} - ${reservation.heureFin}
-📋 Formule: ${reservation.formuleText}
-🎒 Pack: ${reservation.packMateriel || 'Aucun'}
+📦 Formule: ${reservation.formuleText}
+🧰 Pack: ${reservation.packMateriel || 'Aucun'}
 
 💰 Total TTC: ${reservation.totalTTC} €
 💳 Acompte: ${reservation.deposit} €
 
-👔 Statut: ${reservation.statut}
-📊 Expérience: ${reservation.experience}
-🎯 Spécialités: ${reservation.specialites.join(', ') || 'Non spécifié'}
-
 📝 Notes: ${reservation.notes || 'Aucune'}`;
+
+    const whatsappUrlManager = `https://wa.me/33612345678?text=${encodeURIComponent(messageManager)}`;
+    window.open(whatsappUrlManager, '_blank');
     
-    // WhatsApp notification au DEMANDEUR (client)
-    const messageClient = `✅ CONFIRMATION DE VOTRE DEMANDE - PHENO&CO
-
-Bonjour ${nom},
-
-Votre demande de réservation a bien été enregistrée !
-
-📅 Dates: ${reservation.dateDebut}${reservation.dateFin ? ' → ' + reservation.dateFin : ''}
-⏰ Horaires: ${reservation.heureDebut} - ${reservation.heureFin}
-📋 Formule: ${reservation.formuleText}
-🎒 Pack: ${reservation.packMateriel || 'Aucun'}
-
-💰 Total TTC: ${reservation.totalTTC} €
-💳 Acompte à régler: ${reservation.deposit} €
-
-Nous vous contacterons rapidement pour confirmer votre réservation et le paiement de l'acompte.
-
-PHENO&CO - Barbershop Montpellier`;
-    
-    // Ouvrir WhatsApp pour le salon (numéro PHENO&CO)
-    window.open(`https://wa.me/33695914111?text=${encodeURIComponent(messageManager)}`, '_blank');
-    
-    // Ouvrir WhatsApp pour le client
-    const clientPhone = telephone.replace(/\s/g, '').replace(/^0/, '33');
-    setTimeout(() => {
-      window.open(`https://wa.me/${clientPhone}?text=${encodeURIComponent(messageClient)}`, '_blank');
-    }, 500);
-    
-    let emailError = false;
-    if (!emailJsReady) {
-      emailError = true;
-    } else {
+    // Email sending
+    let emailSent = false;
+    if (emailJsReady) {
       try {
-      // Récapitulatif complet pour les emails
-      const recapText = `
-RÉCAPITULATIF DE LA DEMANDE DE RÉSERVATION
-
-CLIENT
-- Nom: ${nom}
-- Email: ${email}
-- Téléphone: ${telephone}
-
-RÉSERVATION
-- Dates: ${reservation.dateDebut}${reservation.dateFin ? ' au ' + reservation.dateFin : ''}
-- Horaires: ${reservation.heureDebut} - ${reservation.heureFin}
-- Formule: ${reservation.formuleText}
-- Pack matériel: ${reservation.packMateriel || 'Aucun'}
-
-TARIFICATION
-- Total HT: ${reservation.totalHT} €
-- TVA (20%): ${reservation.totalTVA} €
-- Total TTC: ${reservation.totalTTC} €
-- Acompte à régler: ${reservation.deposit} €
-
-PROFIL PROFESSIONNEL
-- Statut: ${reservation.statut}
-- Expérience: ${reservation.experience}
-- Spécialités: ${reservation.specialites.join(', ') || 'Non spécifié'}
-
-NOTES
-${reservation.notes || 'Aucune note'}
-
----
-PHENO&CO - Barbershop & Coworking - Montpellier
-      `.trim();
-      
-      const templateParams = {
-        client_name: nom,
-        client_email: email,
-        client_phone: telephone,
-        formule: reservation.formuleText,
-        date_debut: reservation.dateDebut,
-        date_fin: reservation.dateFin || 'N/A',
-        heure_debut: reservation.heureDebut,
-        heure_fin: reservation.heureFin,
-        pack_materiel: reservation.packMateriel || 'Aucun',
-        total_ht: reservation.totalHT,
-        total_tva: reservation.totalTVA,
-        total_ttc: reservation.totalTTC,
-        acompte: reservation.deposit,
-        statut_pro: reservation.statut,
-        experience: reservation.experience,
-        specialites: reservation.specialites.join(', ') || 'Non spécifié',
-        notes: reservation.notes || 'Aucune',
-        message: recapText,
-        recap: recapText
-      };
-      
-      console.log('Sending emails with params:', templateParams);
-      
-      const email1 = await emailjs.send('service_llizndy', 'template_m6uvyuq', { 
-        ...templateParams, 
-        to_email: "location.phenoandco@gmail.com", 
-        to_name: "Manager PHENO&CO" 
-      });
-      console.log('Email 1 (manager) sent:', email1);
-      
-      const email2 = await emailjs.send('service_llizndy', 'template_m6uvyuq', { 
-        ...templateParams, 
-        to_email: email, 
-        to_name: nom 
-      });
-      console.log('Email 2 (client) sent:', email2);
-      
+        await emailjs.send('service_phenoandco', 'template_reservation', {
+          to_email: email,
+          to_name: nom,
+          formule: reservation.formuleText,
+          date_debut: reservation.dateDebut,
+          date_fin: reservation.dateFin || reservation.dateDebut,
+          heure_debut: reservation.heureDebut,
+          heure_fin: reservation.heureFin,
+          pack: reservation.packMateriel || 'Aucun',
+          total_ttc: reservation.totalTTC,
+          acompte: reservation.deposit
+        });
+        emailSent = true;
       } catch (error) {
-        console.error('Email error object:', error);
-        console.error('Email error text:', error?.text);
-        console.error('Email error message:', error?.message);
-        console.error('Email error status:', error?.status);
-        console.error('Email error full:', JSON.stringify(error, Object.getOwnPropertyNames(error)));
-        emailError = true;
+        console.error('Email error:', error);
       }
     }
     
-    submitBtn.innerHTML = '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg> Demande Envoyée !';
+    // Show success
+    submitBtn.innerHTML = '<i data-lucide="check"></i> Demande envoyée !';
+    submitBtn.style.backgroundColor = '#22c55e';
     
     const successMessage = document.getElementById('successMessage');
     successMessage.classList.add('show');
     
-    if (emailError) {
+    if (!emailSent) {
       document.getElementById('emailWarning').style.display = 'flex';
     }
     
+    createIconsSafe();
+    
+    // Reset after delay
     setTimeout(() => {
-      successMessage.classList.remove('show');
       submitBtn.disabled = false;
       submitBtn.innerHTML = 'Envoyer ma demande <i data-lucide="arrow-right"></i>';
+      submitBtn.style.backgroundColor = '';
       createIconsSafe();
-      document.getElementById('reservationForm').reset();
-      
-      document.getElementById('card-courte').classList.add('selected');
-      document.getElementById('card-longue').classList.remove('selected');
-      document.getElementById('formuleCourte').style.display = 'block';
-      document.getElementById('formuleLongue').style.display = 'none';
-      document.getElementById('formule-label').textContent = 'Formule courte *';
-      document.getElementById('heureDebut').disabled = false;
-      document.getElementById('heureFin').disabled = false;
-      
-      const tomorrow = new Date();
-      tomorrow.setDate(tomorrow.getDate() + 1);
-      const dateDebutInput = document.getElementById('dateDebut');
-      const dateFinInput = document.getElementById('dateFin');
-      const heureDebutSelect = document.getElementById('heureDebut');
-      const heureFinSelect = document.getElementById('heureFin');
-      const tomorrowValue = tomorrow.toISOString().split('T')[0];
-      dateDebutInput.min = tomorrowValue;
-      dateFinInput.min = tomorrowValue;
-      dateDebutInput.value = tomorrowValue;
-
-      updateHoursForDate();
-      if (heureDebutSelect.options.length > 0) {
-        heureDebutSelect.value = heureDebutSelect.options[0].value;
-      }
-      if (heureFinSelect.options.length > 0) {
-        heureFinSelect.value = heureFinSelect.options[0].value;
-      }
-      
-      calculatePrice();
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    }, 3000);
+    }, 5000);
   });
   
-  // ==================== INITIALIZATION ====================
+  // ==================== INIT ====================
   document.addEventListener('DOMContentLoaded', function() {
     createIconsSafe();
-
-    const tomorrow = new Date();
-    tomorrow.setDate(tomorrow.getDate() + 1);
-
-    const dateDebutInput = document.getElementById('dateDebut');
-    const dateFinInput = document.getElementById('dateFin');
-    const heureDebutSelect = document.getElementById('heureDebut');
-    const heureFinSelect = document.getElementById('heureFin');
-
-    const tomorrowValue = tomorrow.toISOString().split('T')[0];
-    dateDebutInput.min = tomorrowValue;
-    dateFinInput.min = tomorrowValue;
-    dateDebutInput.value = tomorrowValue;
-
-    updateHoursForDate();
-    if (heureDebutSelect.options.length > 0) {
-      heureDebutSelect.value = heureDebutSelect.options[0].value;
-    }
-    if (heureFinSelect.options.length > 0) {
-      heureFinSelect.value = heureFinSelect.options[0].value;
-    }
-
     calculatePrice();
+    
+    // Set min date to today
+    const today = new Date().toISOString().split('T')[0];
+    document.getElementById('dateDebut').min = today;
+    document.getElementById('dateFin').min = today;
   });
 </script>
 
-</body>
+  </body>
 </html>
