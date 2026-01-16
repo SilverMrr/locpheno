@@ -146,7 +146,7 @@
     .section-header h2 { font-size: 1.875rem; font-weight: 700; color: var(--primary); margin-bottom: 1rem; }
     .section-header p { color: var(--muted); max-width: 42rem; margin: 0 auto; }
     
-    .form-grid { display: grid; grid-template-columns: 1fr; gap: 2rem; }
+    .form-grid { display: grid; grid-template-columns: 1fr; gap: 2rem; align-items: start; }
     @media (min-width: 1024px) { .form-grid { grid-template-columns: 7fr 5fr; } }
     
     .card {
@@ -400,6 +400,15 @@
     .footer .admin-link { display: block; margin-top: 1rem; font-size: 0.75rem; opacity: 0.2; }
     .footer .admin-link:hover { opacity: 1; }
     
+    .sticky-card { position: static; }
+    @media (min-width: 1024px) {
+      .sticky-card {
+        position: fixed;
+        top: 2rem;
+        right: max(1rem, calc((100vw - 72rem) / 2));
+        width: min(30rem, calc(100vw - 2rem));
+      }
+    }
     .sticky-card { position: sticky; top: 2rem; }
     
     input[type="date"]::-webkit-calendar-picker-indicator {
