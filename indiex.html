@@ -715,14 +715,14 @@
               
               <div class="form-group">
                 <label class="form-label">Date de fin</label>
-                <input type="date" id="dateFin" name="dateFin" class="form-input" onchange="calculatePrice()">
+                <input type="date" id="dateFin" name="dateFin" class="form-input" onchange="syncDateFin(); calculatePrice()">
               </div>
             </div>
             
             <div class="form-row">
               <div class="form-group">
                 <label class="form-label">Heure de début *</label>
-                <select id="heureDebut" name="heureDebut" class="form-select" required onchange="calculatePrice()">
+                <select id="heureDebut" name="heureDebut" class="form-select" required onchange="updateEndHours(); calculatePrice()">
                   <option value="10:00">10:00</option>
                   <option value="10:30">10:30</option>
                   <option value="11:00">11:00</option>
@@ -1324,7 +1324,17 @@
   }
   
   // ==================== EMAILJS INIT ====================
-  emailjs.init('uBxESnC6CTyqiNyS6');
+  if (window.emailjs?.init) {
+    emailjs.init('uBxESnC6CTyqiNyS6');
+  } else {
+    console.warn('EmailJS n\'est pas disponible.');
+  }
+
+  function refreshIcons() {
+    if (window.lucide?.createIcons) {
+      lucide.createIcons();
+    }
+  }
   
   // ==================== RESERVATION FUNCTIONS ====================
   function scrollToReservation() {
@@ -1345,8 +1355,10 @@
     
     if (dayOfWeek === 0 || dayOfWeek === 1) {
       // Dimanche ou Lundi - fermé
-      alert('Attention : Le salon est fermé le dimanche et le lundi. Veuillez choisir un autre jour.');
-      return;
+      const nextOpenDate = getNextOpenDate(date);
+      document.getElementById('dateDebut').value = nextOpenDate;
+      showToast('Info', 'Le salon est fermé le dimanche et le lundi. La date a été déplacée au prochain jour ouvré.');
+      return updateHoursForDate();
     } else if (dayOfWeek === 3) {
       // Mercredi : 12h - 17h30
       startHour = 12;
@@ -1366,6 +1378,7 @@
       optionsDebut += `<option value="${value}">${value}</option>`;
     }
     heureDebutSelect.innerHTML = optionsDebut;
+    heureFinSelect.dataset.endHour = endHour.toString();
     
     // Générer les options pour heure de fin
     let optionsFin = '';
@@ -1376,6 +1389,53 @@
       optionsFin += `<option value="${value}">${value}</option>`;
     }
     heureFinSelect.innerHTML = optionsFin;
+    updateEndHours();
+    syncDateFin();
+  }
+
+  function updateEndHours() {
+    const heureDebutSelect = document.getElementById('heureDebut');
+    const heureFinSelect = document.getElementById('heureFin');
+    const startValue = heureDebutSelect.value;
+    const endHour = Number(heureFinSelect.dataset.endHour);
+
+    if (!startValue || Number.isNaN(endHour)) return;
+
+    const [startHour, startMinute] = startValue.split(':').map(Number);
+    const startDecimal = startHour + startMinute / 60;
+
+    let optionsFin = '';
+    for (let h = startDecimal + 1; h <= endHour; h += 0.5) {
+      const hours = Math.floor(h);
+      const minutes = (h % 1 === 0) ? '00' : '30';
+      const value = `${hours.toString().padStart(2, '0')}:${minutes}`;
+      optionsFin += `<option value="${value}">${value}</option>`;
+    }
+    heureFinSelect.innerHTML = optionsFin;
+
+    if (heureFinSelect.options.length > 0) {
+      heureFinSelect.value = heureFinSelect.options[0].value;
+    }
+  }
+
+  function syncDateFin() {
+    const dateDebut = document.getElementById('dateDebut').value;
+    const dateFinInput = document.getElementById('dateFin');
+
+    if (!dateDebut) return;
+
+    dateFinInput.min = dateDebut;
+    if (dateFinInput.value && dateFinInput.value < dateDebut) {
+      dateFinInput.value = dateDebut;
+    }
+  }
+
+  function getNextOpenDate(date) {
+    const next = new Date(date);
+    do {
+      next.setDate(next.getDate() + 1);
+    } while ([0, 1].includes(next.getDay()));
+    return next.toISOString().split('T')[0];
   }
   
   function updateDuree() {
@@ -1422,6 +1482,10 @@
     const dateFin = document.getElementById('dateFin').value;
     const heureDebut = document.getElementById('heureDebut').value;
     const heureFin = document.getElementById('heureFin').value;
+
+    if (!heureDebut || !heureFin) {
+      return;
+    }
     
     let basePrice = 0;
     let formuleText = '';
@@ -1536,7 +1600,7 @@
       document.getElementById('adminLogin').style.display = 'none';
       document.getElementById('adminDashboard').style.display = 'block';
       renderReservations();
-      lucide.createIcons();
+      refreshIcons();
     } else {
       showToast('Erreur', 'Code d\'accès incorrect', true);
     }
@@ -1552,7 +1616,7 @@
       input.type = 'password';
       icon.setAttribute('data-lucide', 'eye');
     }
-    lucide.createIcons();
+    refreshIcons();
   }
   
   function logoutAdmin() {
@@ -1605,7 +1669,7 @@
           <p>Aucune réservation trouvée</p>
         </div>
       `;
-      lucide.createIcons();
+      refreshIcons();
       return;
     }
     
@@ -1677,7 +1741,7 @@
       `;
     }).join('');
     
-    lucide.createIcons();
+    refreshIcons();
   }
   
   function updateStatus(id, newStatus) {
@@ -1813,7 +1877,11 @@ PHENO&CO - Barbershop Montpellier`;
     }, 500);
     
     let emailError = false;
-    try {
+    if (!window.emailjs?.send) {
+      emailError = true;
+      showToast('Erreur', 'Impossible d\'envoyer les emails pour le moment.', true);
+    } else {
+      try {
       // Récapitulatif complet pour les emails
       const recapText = `
 RÉCAPITULATIF DE LA DEMANDE DE RÉSERVATION
@@ -1885,13 +1953,14 @@ PHENO&CO - Barbershop & Coworking - Montpellier
       });
       console.log('Email 2 (client) sent:', email2);
       
-    } catch (error) {
-      console.error('Email error object:', error);
-      console.error('Email error text:', error?.text);
-      console.error('Email error message:', error?.message);
-      console.error('Email error status:', error?.status);
-      console.error('Email error full:', JSON.stringify(error, Object.getOwnPropertyNames(error)));
-      emailError = true;
+      } catch (error) {
+        console.error('Email error object:', error);
+        console.error('Email error text:', error?.text);
+        console.error('Email error message:', error?.message);
+        console.error('Email error status:', error?.status);
+        console.error('Email error full:', JSON.stringify(error, Object.getOwnPropertyNames(error)));
+        emailError = true;
+      }
     }
     
     submitBtn.innerHTML = '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg> Demande Envoyée !';
@@ -1907,7 +1976,7 @@ PHENO&CO - Barbershop & Coworking - Montpellier
       successMessage.classList.remove('show');
       submitBtn.disabled = false;
       submitBtn.innerHTML = 'Envoyer ma demande <i data-lucide="arrow-right"></i>';
-      lucide.createIcons();
+      refreshIcons();
       document.getElementById('reservationForm').reset();
       
       document.getElementById('card-courte').classList.add('selected');
@@ -1923,7 +1992,7 @@ PHENO&CO - Barbershop & Coworking - Montpellier
       document.getElementById('dateDebut').value = tomorrow.toISOString().split('T')[0];
       document.getElementById('heureDebut').value = '10:00';
       document.getElementById('heureFin').value = '11:00';
-      
+      updateHoursForDate();
       calculatePrice();
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }, 3000);
@@ -1931,7 +2000,7 @@ PHENO&CO - Barbershop & Coworking - Montpellier
   
   // ==================== INITIALIZATION ====================
   document.addEventListener('DOMContentLoaded', function() {
-    lucide.createIcons();
+    refreshIcons();
     
     const tomorrow = new Date();
     tomorrow.setDate(tomorrow.getDate() + 1);
@@ -1939,6 +2008,7 @@ PHENO&CO - Barbershop & Coworking - Montpellier
     document.getElementById('heureDebut').value = '10:00';
     document.getElementById('heureFin').value = '11:00';
     
+    updateHoursForDate();
     calculatePrice();
   });
 </script>
